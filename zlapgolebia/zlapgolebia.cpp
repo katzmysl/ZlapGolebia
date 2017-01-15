@@ -14,9 +14,11 @@ const int RES_Y = 768;
 const float FPS = 100;
 const int KEY_NONE = -1;
 const int MAX_ENEMIES = 100;
-const int SPEED_PLAYER = 3;
-const int SPEED_ENEMY = 1;
 const int MAX_HIGHSCORES = 10;
+const int MAX_NAME_LENGTH = 20;
+const int PLAYER_LIVES[3] = { 5 , 4 , 3 };
+const int PLAYER_SPEEDS[3] = { 3 , 5 , 7 };
+const int POINTS_TO_FINISH_LEVEL = 300;
 
 const char FILE_BACKGROUND[] = "grafika\\background.png";
 const char FILE_PIDGEON[] = "grafika\\enemy.png";
@@ -66,10 +68,12 @@ typedef struct s_game {
 	int currentKeyPressed;
 	int highscore;
 	int lifeCount;
+	int levelInfoTimeout;
+	int levelNumber;
 } Game;
 
 typedef struct s_score {
-	char name[20];
+	char name[MAX_NAME_LENGTH+1];
 	int score;
 } Score;
 
@@ -79,7 +83,7 @@ typedef struct s_menu {
 	ALLEGRO_FONT *font;	
 	bool newHighscore;
 	int newHighscorePos;
-	Score highscores[10];
+	Score highscores[MAX_HIGHSCORES];
 	int highscoreCount;
 } Menu;
 
@@ -181,24 +185,34 @@ void generateEnemy() {
 	}
 }
 
+void onLevelEnd() {
+	game.levelNumber++;
+	game.enemyCount = 0;
+	game.levelInfoTimeout = 100;
+	game.currentKeyPressed = KEY_NONE;
+}
+
 void doTimerGame() {
 
 	if (game.lifeCount > 0) {
+		if (game.highscore >= game.levelNumber * POINTS_TO_FINISH_LEVEL) {
+			onLevelEnd();
+		}
 		switch (game.currentKeyPressed) {
 		case ALLEGRO_KEY_UP:
 			if (game.player.y > 0) {
-				game.player.y -= SPEED_PLAYER;
+				game.player.y -= PLAYER_SPEEDS[menu.selectedPlayer];
 			}
 			break;
 		case ALLEGRO_KEY_DOWN:
 			if (game.player.y + game.player.h < RES_Y) {
-				game.player.y += SPEED_PLAYER;
+				game.player.y += PLAYER_SPEEDS[menu.selectedPlayer];
 			}
 			break;
 		}
 		int enemiesToDelete = 0;
 		for (int i = 0; i < game.enemyCount; i++) {
-			game.enemies[i].x -= SPEED_ENEMY;
+			game.enemies[i].x -= game.levelNumber;
 			if (game.enemies[i].x < -70) {
 				enemiesToDelete++;
 				game.lifeCount--;
@@ -224,7 +238,6 @@ void doTimerGame() {
 			}
 			game.enemyCount--;
 		}
-
 		generateEnemy();
 	}
 
@@ -233,15 +246,25 @@ void doTimerGame() {
 		drawActor(&game.enemies[i], ALLEGRO_FLIP_HORIZONTAL);
 	}	
 	drawActor(&game.player);
-	char scoreStr[10];
+	char scoreStr[50];
 	sprintf(scoreStr, "%d", game.highscore);
 	al_draw_text(game.scoreFont, al_map_rgb(255, 130, 0), RES_X - 100, 5, ALLEGRO_ALIGN_LEFT, scoreStr);
 	for (int i = 0; i < game.lifeCount; i++) {
-		al_draw_bitmap(bitmaps.life, RES_X - i*30 - 30, RES_Y-30, 0);
+		al_draw_bitmap(bitmaps.life, RES_X - i*30 - 30, RES_Y-50, 0);
 	}
+	if (game.levelInfoTimeout > 0) {
+		char levelInfo[50];
+		sprintf(levelInfo, "Level %d", game.levelNumber);
+		al_draw_text(game.scoreFont, al_map_rgb(255, 0, 0), RES_X / 2, RES_Y / 2 - 20, ALLEGRO_ALIGN_CENTER, levelInfo);
+		game.levelInfoTimeout--;
+	}	
 	if (game.lifeCount <= 0) {
-		al_draw_text(game.scoreFont, al_map_rgb(255, 0, 0), RES_X /2, RES_Y/2, ALLEGRO_ALIGN_CENTER, "GAME OVER");
-	
+		sprintf(scoreStr, "Your score: %d", game.highscore);
+		al_draw_filled_rectangle(RES_X / 2 - 250, RES_Y / 2 - 100, RES_X / 2 + 250, RES_Y / 2 + 100, al_map_rgb(0, 0, 0));
+		al_draw_rectangle(RES_X / 2 - 250, RES_Y / 2 - 100, RES_X / 2 + 250, RES_Y / 2 + 100, al_map_rgb(255, 0, 0), 3);
+		al_draw_text(game.scoreFont, al_map_rgb(255, 0, 0), RES_X / 2, RES_Y / 2 - 70, ALLEGRO_ALIGN_CENTER, "GAME OVER!");
+		al_draw_text(game.scoreFont, al_map_rgb(255, 0, 0), RES_X / 2, RES_Y / 2 - 20, ALLEGRO_ALIGN_CENTER, scoreStr);
+		al_draw_text(game.scoreFont, al_map_rgb(255, 0, 0), RES_X / 2, RES_Y / 2 + 30, ALLEGRO_ALIGN_CENTER, "press ENTER to continue");	
 	}
 	al_flip_display();
 }
@@ -260,6 +283,12 @@ void doTimerPlayerSelect() {
 	al_flip_display();
 }
 
+void doTimerInstruction() {
+	al_clear_to_color(al_map_rgb(0, 0, 0));
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), RES_X / 2, 100, ALLEGRO_ALIGN_CENTER, "Instruction");
+	al_flip_display();
+}
+
 void doTimerHighscore() {
 
 	al_clear_to_color(al_map_rgb_f(0, 0, 0));
@@ -270,8 +299,12 @@ void doTimerHighscore() {
 		al_draw_text(menu.font, al_map_rgb(255, 0, 0), RES_X / 2 - 200, 150 + i*50, ALLEGRO_ALIGN_LEFT, menu.highscores[i].name);
 		al_draw_text(menu.font, al_map_rgb(255, 0, 0), RES_X / 2 + 200, 150 + i * 50, ALLEGRO_ALIGN_RIGHT, scoreStr);
 	}
+	if (menu.newHighscore) {
+		al_draw_text(menu.font, al_map_rgb(255, 0, 0), RES_X / 2, RES_Y-70, ALLEGRO_ALIGN_CENTER, "enter your name and press Enter");
+	} else{
+		al_draw_text(menu.font, al_map_rgb(255, 0, 0), RES_X / 2, RES_Y-70, ALLEGRO_ALIGN_CENTER, "press Enter to continue...");
+	}
 	al_flip_display();
-
 }
 
 void doTimerExit() {}
@@ -286,6 +319,9 @@ void doTimer(Modes currentMode) {
 			break;
 		case PLAYER_SELECT:
 			doTimerPlayerSelect();
+			break;
+		case INSTRUCTION:
+			doTimerInstruction();
 			break;
 		case HIGHSCORE:
 			doTimerHighscore();
@@ -319,7 +355,7 @@ Modes onMenuEnterPress() {
 	return newMode;
 }
 
-void onGameEnd() {	
+void onGameEnd() {
 	if (menu.highscores[menu.highscoreCount - 1].score < game.highscore || menu.highscoreCount < MAX_HIGHSCORES) {
 		menu.newHighscore = true;
 		menu.newHighscorePos = 0;
@@ -334,7 +370,7 @@ void onGameEnd() {
 			strcpy(menu.highscores[i].name, menu.highscores[i-1].name);
 		}
 		menu.highscores[menu.newHighscorePos].score = game.highscore;
-		strcpy(menu.highscores[menu.newHighscorePos].name ,"TEST");
+		strcpy(menu.highscores[menu.newHighscorePos].name ,"_");
 	}
 	else {
 		menu.newHighscore = false;
@@ -365,6 +401,17 @@ Modes doKeyboardMenu(ALLEGRO_EVENT ev) {
 		break;
 	case ALLEGRO_KEY_ESCAPE:
 		newMode = STOP;
+		break;
+	}
+	return newMode;
+}
+
+Modes doKeyboardInstruction(ALLEGRO_EVENT ev) {
+	Modes newMode = INSTRUCTION;
+	switch (ev.keyboard.keycode)
+	{	
+	case ALLEGRO_KEY_ESCAPE:
+		newMode = MENU;
 		break;
 	}
 	return newMode;
@@ -424,8 +471,32 @@ Modes doKeyboardPlayerSelect(ALLEGRO_EVENT ev) {
 
 Modes doKeyboardHighscore(ALLEGRO_EVENT ev) {
 	Modes newMode = HIGHSCORE;
-	if (ev.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
-		newMode = MENU;
+	if (menu.newHighscore) {
+		char* newName = menu.highscores[menu.newHighscorePos].name;
+		int nameLen = strlen(newName);
+		if (ev.keyboard.keycode == ALLEGRO_KEY_ENTER || ev.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
+			menu.newHighscore = false;
+			if (nameLen == 1) {
+				strcpy(newName, "NEW_PLAYER");
+			}
+			else {
+				newName[nameLen-1] = '\0';
+			}
+		}
+		else if (ev.keyboard.keycode == ALLEGRO_KEY_BACKSPACE && nameLen > 1) {
+			newName[nameLen-2] = '_';
+			newName[nameLen-1] = '\0';
+		}
+		else if (ev.keyboard.keycode >= ALLEGRO_KEY_A && ev.keyboard.keycode <= ALLEGRO_KEY_Z && nameLen < MAX_NAME_LENGTH) {
+			newName[nameLen-1] = 'A' + ev.keyboard.keycode - ALLEGRO_KEY_A;
+			newName[nameLen] = '_';
+			newName[nameLen+1] = '\0';
+		}
+	}
+	else {
+		if (ev.keyboard.keycode == ALLEGRO_KEY_ESCAPE || ev.keyboard.keycode == ALLEGRO_KEY_ENTER) {
+			newMode = MENU;
+		}
 	}
 	return newMode;
 }
@@ -438,6 +509,9 @@ Modes doKeyboard(Modes currentMode, ALLEGRO_EVENT ev) {
 	switch (currentMode) {
 	case MENU:
 		currentMode = doKeyboardMenu(ev);
+		break;
+	case INSTRUCTION:
+		currentMode = doKeyboardInstruction(ev);
 		break;
 	case GAME:
 		currentMode = doKeyboardGame(ev);
@@ -466,7 +540,9 @@ void onModeChange(Modes oldMode, Modes newMode) {
 		game.currentKeyPressed = KEY_NONE;
 		game.enemyCount = 0;
 		game.highscore = 0;
-		game.lifeCount = 5;
+		game.lifeCount = PLAYER_LIVES[menu.selectedPlayer];
+		game.levelInfoTimeout = 100;
+		game.levelNumber = 1;
 		break;
 	case PLAYER_SELECT:
 		menu.selectedPlayer = 0;
