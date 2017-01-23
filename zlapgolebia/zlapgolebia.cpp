@@ -285,7 +285,21 @@ void doTimerPlayerSelect() {
 
 void doTimerInstruction() {
 	al_clear_to_color(al_map_rgb(0, 0, 0));
-	al_draw_text(menu.font, al_map_rgb(255, 0, 0), RES_X / 2, 100, ALLEGRO_ALIGN_CENTER, "Instruction");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), RES_X / 2, 50, ALLEGRO_ALIGN_CENTER, "Instruction");
+	int marginY = 200;
+	int marginX = 100;
+	int rowHeight = 30;
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY, ALLEGRO_ALIGN_LEFT, "The goal of the game is to catch as many pidgeons as you can.");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY+ rowHeight, ALLEGRO_ALIGN_LEFT, "You can do this by pressing up and down keys on your keyboard.");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY+ 2*rowHeight, ALLEGRO_ALIGN_LEFT, "You will advance to a new level each 500 points you get.");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY + 3* rowHeight, ALLEGRO_ALIGN_LEFT, "There are three types of enemies: ");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY + 4 * rowHeight, ALLEGRO_ALIGN_LEFT, " - white pidgeon gives you 50 points");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY + 5 * rowHeight, ALLEGRO_ALIGN_LEFT, " - red-headed one - 100 points ");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY + 6 * rowHeight, ALLEGRO_ALIGN_LEFT, " - gold - 200 points ");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY + 7 * rowHeight, ALLEGRO_ALIGN_LEFT, "Remember that every time you miss a pidgeon you lose one of your medals!");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY + 8 * rowHeight, ALLEGRO_ALIGN_LEFT, "When you lose all of them the game is over ");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), marginX, marginY + 10 * rowHeight, ALLEGRO_ALIGN_LEFT, " Good luck! ");
+	al_draw_text(menu.font, al_map_rgb(255, 0, 0), RES_X / 2, RES_Y - 70, ALLEGRO_ALIGN_CENTER, "press Enter to continue...");
 	al_flip_display();
 }
 
@@ -408,11 +422,8 @@ Modes doKeyboardMenu(ALLEGRO_EVENT ev) {
 
 Modes doKeyboardInstruction(ALLEGRO_EVENT ev) {
 	Modes newMode = INSTRUCTION;
-	switch (ev.keyboard.keycode)
-	{	
-	case ALLEGRO_KEY_ESCAPE:
+	if (ev.keyboard.keycode == ALLEGRO_KEY_ESCAPE || ev.keyboard.keycode == ALLEGRO_KEY_ENTER) {
 		newMode = MENU;
-		break;
 	}
 	return newMode;
 }
